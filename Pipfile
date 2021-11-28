@@ -7,7 +7,7 @@ name = "pypi"
 bs4 = "*"
 requests = "*"
 structlog = "*"
-python-dateutil = "*"
+pydantic = "*"
 
 [dev-packages]
 black = "==21.11b1"
