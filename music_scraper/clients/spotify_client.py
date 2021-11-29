@@ -61,17 +61,20 @@ class SpotifyClient:
         }
 
     @staticmethod
-    def _raise_for_error(response: requests.Response) -> None:
+    def _handle_not_found_error(response: requests.Response) -> None:
+        response_data = response.json()
+        error = response_data.get("error", None)
+        if error:
+            message = error.get("message", None)
+            if message == "analysis not found":
+                raise SpotifyAnalysisNotFound("analysis not found")
+
+    def _raise_for_error(self, response: requests.Response) -> None:
         status_code = response.status_code
         if status_code == 503 or status_code == 504 or status_code == 401:
             raise SpotifyTemporaryFailure(f"spotify temporarily unavailable ({status_code})")
         if status_code == 404:
-            response_data = response.json()
-            error = response_data.get("error", None)
-            if error:
-                message = error.get("message", None)
-                if message == "analysis not found":
-                    raise SpotifyAnalysisNotFound("analysis not found")
+            self._handle_not_found_error(response)
         if status_code == 429:
             raise SpotifyTemporaryFailure("spotify rate limit hit")
         raise SpotifyUnhandledError(f"unhandled {status_code} error")
@@ -100,16 +103,27 @@ class SpotifyClient:
             return self._get_data_with_retry(url)
         return response.json()
 
-    def _process_album_search_response_data(self, response_data: Dict, album: Album) -> str:
-        search_result = SpotifyAlbumSearchResult.parse_obj(response_data)
+    @staticmethod
+    def _find_matching_album_id_from_search_result(
+        search_result: SpotifyAlbumSearchResult, album: Album
+    ) -> str:
         album_id = search_result.find_matching_album_id(album)
         if not album_id:
             raise SpotifyRecordNotFound(f"no matching spotify album found for '{str(album)}'")
         return album_id
 
-    def _get_album_id(self, album: Album) -> str:
+    def _process_album_search_response_data(self, response_data: Dict, album: Album) -> str:
+        search_result = SpotifyAlbumSearchResult.parse_obj(response_data)
+        return self._find_matching_album_id_from_search_result(search_result, album)
+
+    @staticmethod
+    def _get_album_search_url(album: Album) -> str:
         album_query_string = quote(album.title + " " + " ".join(album.artists))
         url = SPOTIFY_BASE_URL + f"search?q={album_query_string}&type=album"
+        return url
+
+    def _get_album_id(self, album: Album) -> str:
+        url = self._get_album_search_url(album)
         response_data = self._get_data_with_retry(url)
         return self._process_album_search_response_data(response_data, album)
 
