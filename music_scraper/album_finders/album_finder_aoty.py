@@ -14,7 +14,7 @@ from music_scraper.models import Album
 
 class AlbumFinderAOTY(AlbumFinderBase):
     def __init__(self, http_client: HTTPClient):
-        self._url = "https://www.albumoftheyear.org/releases"
+        self._url = "https://www.albumoftheyear.org/releases/this-week/"
         self._http_client = http_client
 
     def get_url(self) -> str:
