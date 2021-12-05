@@ -1,5 +1,7 @@
 from selenium import webdriver
-import time
+from selenium.common.exceptions import WebDriverException
+
+from music_scraper.clients.exceptions import WebDriverFailure
 
 DRIVER_DEFAULT_LOADING_TIME = 0
 
@@ -17,9 +19,14 @@ class WebDriver:
 
     def _ensure_page_loads(self) -> None:
         self._driver.maximize_window()
-        time.sleep(DRIVER_DEFAULT_LOADING_TIME)
+        self._driver.implicitly_wait(DRIVER_DEFAULT_LOADING_TIME)
 
     def get_page_html(self, url: str) -> str:
-        self._driver.get(url)
+        try:
+            self._driver.get(url)
+        except WebDriverException as err:
+            raise WebDriverFailure(f"web driver failed: {str(err)}")
         self._ensure_page_loads()
-        return self._driver.page_source
+        html = self._driver.page_source
+        self._driver.close()
+        return html

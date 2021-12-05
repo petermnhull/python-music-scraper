@@ -16,3 +16,7 @@ class SpotifyNotFound(Exception):
 
 class SpotifyAuthorisationFailure(Exception):
     pass
+
+
+class WebDriverFailure(Exception):
+    pass

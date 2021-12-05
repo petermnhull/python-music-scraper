@@ -13,13 +13,15 @@ I started this project to automate my habit of scrolling through Bandcamp for fi
 ## Usage
 Create a `.env` file in the root directory with the following variables:
 
-|Variable                  |Detail                                                  |
-|--------------------------|--------------------------------------------------------|
-|`SPOTIFY_CLIENT_ID`       |Spotify Client ID                                       |
-|`SPOTIFY_CLIENT_SECRET`   |Spotify Client Secret                                   |
-|`CHROME_DRIVER_PATH`      |Relative path to Chrome driver for Selenium             |
-|`BANDCAMP_SCRAPER_ENABLED`|Feature flag for Bandcamp scraper (true/false)          |
-|`AOTY_SCRAPER_ENABLED`    |Feature flag for albumoftheyear.org scraper (true/false)|
+|Variable                   |Detail                                                  |
+|---------------------------|--------------------------------------------------------|
+|`SPOTIFY_CLIENT_ID`        |Spotify Client ID                                       |
+|`SPOTIFY_CLIENT_SECRET`    |Spotify Client Secret                                   |
+|`CHROME_DRIVER_PATH`       |Relative path to Chrome driver for Selenium             |
+|`AOTY_SCRAPER_ENABLED`     |Feature flag for albumoftheyear.org scraper (true/false)|
+|`BANDCAMP_SCRAPER_ENABLED` |Feature flag for Bandcamp scraper (true/false)          |
+|`BANDCAMP_SCRAPER_MIN_PAGE`|First page to start scraping on Bandcamp (e.g. 0)       |
+|`BANDCAMP_SCRAPER_MAX_PAGE`|Last page to end scraping on Bandcamp (e.g. 3)          |
 
 Then run the following:
 - `make run` to run the scraper.

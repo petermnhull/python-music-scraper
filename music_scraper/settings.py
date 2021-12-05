@@ -12,6 +12,11 @@ class ScraperConfig:
     ALBUM_FINDER_BANDCAMP_ENABLED = (
         os.environ.get("BANDCAMP_SCRAPER_ENABLED", "False").lower() == "true"
     )
-    BANDCAMP_PAGES = [0]
+    BANDCAMP_PAGES = list(
+        range(
+            int(os.environ.get("BANDCAMP_SCRAPER_MIN_PAGE", 0)),
+            int(os.environ.get("BANDCAMP_SCRAPER_MAX_PAGE", 0)) + 1,
+        )
+    )
 
     ALBUM_FINDER_AOTY_ENABLED = os.environ.get("AOTY_SCRAPER_ENABLED", "True").lower() == "true"

@@ -1,52 +1,54 @@
 import structlog
-from selenium import webdriver
+from typing import List
 
-from music_scraper.album_processor import AlbumProcessor
-from music_scraper.album_finders import (
-    AlbumFinderAOTY,
-    AlbumFinderBandcamp,
-)
-from music_scraper.clients import HTTPClient, WebDriver, SpotifyClient
+from music_scraper.clients import HTTPClient, SpotifyClient
 from music_scraper.settings import SpotifyConfig, ScraperConfig
+from music_scraper.factories import WebDriverFactory
+from music_scraper.album_finders import AlbumFinderBandcamp, AlbumFinderAOTY
+from music_scraper.album_processor import AlbumProcessor
 
 _LOGGER = structlog.get_logger(__name__)
 
 
-def _build_selenium_driver(chrome_driver_path: str) -> webdriver.Chrome:
-    options = webdriver.ChromeOptions()
-    options.add_argument("headless")
-    options.add_argument("--no-sandbox")
-    chrome_service = webdriver.chrome.service.Service(chrome_driver_path)
-    selenium_driver = webdriver.Chrome(service=chrome_service, options=options)
-    return selenium_driver
+def _build_album_finder_bandcamp(
+    chrome_driver_path: str, bandcamp_pages: List[int]
+) -> AlbumFinderBandcamp:
+    factory = WebDriverFactory(chrome_driver_path)
+    return AlbumFinderBandcamp(factory, bandcamp_pages)
 
 
-def _build_album_processor() -> AlbumProcessor:
+def _build_album_finder_aoty(http_client: HTTPClient) -> AlbumFinderAOTY:
+    return AlbumFinderAOTY(http_client)
+
+
+def _build_album_processor(
+    spotify_client_id: str,
+    spotify_client_secret: str,
+    chrome_driver_path: str,
+    aoty_enabled: bool,
+    bandcamp_enabled: bool,
+    bandcamp_pages: List[int],
+) -> AlbumProcessor:
     http_client = HTTPClient()
-
-    _LOGGER.info("Intialising Spotify Client...")
-    spotify_client = SpotifyClient(
-        http_client,
-        SpotifyConfig.CLIENT_ID,
-        SpotifyConfig.CLIENT_SECRET,
-    )
-
+    _LOGGER.info("Creating Spotify Client...")
+    spotify_client = SpotifyClient(http_client, spotify_client_id, spotify_client_secret)
     album_finders = []
-    if ScraperConfig.ALBUM_FINDER_AOTY_ENABLED:
+    if aoty_enabled:
         _LOGGER.info("Creating AOTY scraper...")
-        album_finder_aoty = AlbumFinderAOTY(http_client)
-        album_finders.append(album_finder_aoty)
-    if ScraperConfig.ALBUM_FINDER_BANDCAMP_ENABLED:
-        _LOGGER.info("Creating Bandcamp scraper...")
-        selenium_driver = _build_selenium_driver(ScraperConfig.CHROME_DRIVER_PATH)
-        web_driver = WebDriver(selenium_driver)
-        album_finder_bandcamp = AlbumFinderBandcamp(web_driver, ScraperConfig.BANDCAMP_PAGES)
-        album_finders.append(album_finder_bandcamp)
-
-    app = AlbumProcessor(album_finders, spotify_client)
-    return app
+        album_finders.append(_build_album_finder_aoty(http_client))
+    if bandcamp_enabled:
+        _LOGGER.info(f"Creating Bandcamp scraper (pages {bandcamp_pages})...")
+        album_finders.append(_build_album_finder_bandcamp(chrome_driver_path, bandcamp_pages))
+    return AlbumProcessor(album_finders, spotify_client)
 
 
 if __name__ == "__main__":
-    app = _build_album_processor()
+    app = _build_album_processor(
+        SpotifyConfig.CLIENT_ID,
+        SpotifyConfig.CLIENT_SECRET,
+        ScraperConfig.CHROME_DRIVER_PATH,
+        ScraperConfig.ALBUM_FINDER_AOTY_ENABLED,
+        ScraperConfig.ALBUM_FINDER_BANDCAMP_ENABLED,
+        ScraperConfig.BANDCAMP_PAGES,
+    )
     app.main()
