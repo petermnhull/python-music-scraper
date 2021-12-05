@@ -13,10 +13,11 @@ RUN wget -O /tmp/chromedriver.zip http://chromedriver.storage.googleapis.com/`cu
 RUN unzip /tmp/chromedriver.zip chromedriver -d /usr/local/bin/
 ENV DISPLAY=:99
 
-COPY music_scraper/ music_scraper/
 COPY Pipfile Pipfile
 COPY Pipfile.lock Pipfile.lock
 RUN pip install --upgrade pip
 RUN pip install pipenv
 RUN pipenv install --system --deploy
+
+COPY music_scraper/ music_scraper/
 CMD ["python", "-m", "music_scraper"]
