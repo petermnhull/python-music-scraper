@@ -8,9 +8,10 @@ import requests
 from music_scraper.clients.http_client import HTTPClient
 from music_scraper.clients.exceptions import (
     SpotifyTemporaryFailure,
-    SpotifyAnalysisNotFound,
     SpotifyUnhandledError,
-    SpotifyRecordNotFound,
+    SpotifyAlbumUnmatched,
+    SpotifyNotFound,
+    SpotifyAuthorisationFailure,
 )
 from music_scraper.models import (
     Album,
@@ -43,6 +44,10 @@ class SpotifyClient:
 
     @staticmethod
     def _process_token_response(response: requests.Response) -> str:
+        if response.status_code != 200:
+            raise SpotifyAuthorisationFailure(
+                f"failed to get access token with {response.status_code} error"
+            )
         response_data = response.json()
         return response_data["access_token"]
 
@@ -67,17 +72,21 @@ class SpotifyClient:
         if error:
             message = error.get("message", None)
             if message == "analysis not found":
-                raise SpotifyAnalysisNotFound("analysis not found")
+                raise SpotifyNotFound("analysis not found: {response.url}")
+            if message == "Not found.":
+                raise SpotifyNotFound(f"not found, likely invalid search: {response.url}")
 
     def _raise_for_error(self, response: requests.Response) -> None:
         status_code = response.status_code
         if status_code == 503 or status_code == 504 or status_code == 401:
-            raise SpotifyTemporaryFailure(f"spotify temporarily unavailable ({status_code})")
+            raise SpotifyTemporaryFailure(
+                f"spotify temporarily unavailable ({status_code}): {response.url}"
+            )
         if status_code == 404:
             self._handle_not_found_error(response)
         if status_code == 429:
-            raise SpotifyTemporaryFailure("spotify rate limit hit")
-        raise SpotifyUnhandledError(f"unhandled {status_code} error")
+            raise SpotifyTemporaryFailure("spotify rate limit hit: {response.url}")
+        raise SpotifyUnhandledError(f"unhandled {status_code} error: {response.url}")
 
     def _process_get_response(
         self, response: requests.Response, expected_status_code=200
@@ -90,8 +99,8 @@ class SpotifyClient:
         response = self._http_client.do_get(url, self._headers)
         return self._process_get_response(response)
 
-    def _handle_temporary_failure(self, err: Exception) -> None:
-        _LOGGER.warning(f"temporary failure: {str(err)}")
+    def _handle_temporary_failure(self, response: requests.Response, err: Exception) -> None:
+        _LOGGER.warning(f"temporary failure ({str(err)}): {response.url}")
         self._set_headers()
         time.sleep(SPOTIFY_DEFAULT_RETRY_AFTER)
 
@@ -99,7 +108,7 @@ class SpotifyClient:
         try:
             response = self._get(url)
         except SpotifyTemporaryFailure as err:
-            self._handle_temporary_failure(err)
+            self._handle_temporary_failure(response, err)
             return self._get_data_with_retry(url)
         return response.json()
 
@@ -109,7 +118,7 @@ class SpotifyClient:
     ) -> str:
         album_id = search_result.find_matching_album_id(album)
         if not album_id:
-            raise SpotifyRecordNotFound(f"no matching spotify album found for '{str(album)}'")
+            raise SpotifyAlbumUnmatched(f"no matching spotify album found for '{str(album)}'")
         return album_id
 
     def _process_album_search_response_data(self, response_data: Dict, album: Album) -> str:

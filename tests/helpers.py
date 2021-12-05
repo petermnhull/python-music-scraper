@@ -39,6 +39,7 @@ class MockResponse:
     def __init__(self, text: str, status_code: int):
         self.text = text
         self.status_code = status_code
+        self.url = ""
 
     def json(self):
         return json.loads(self.text)
