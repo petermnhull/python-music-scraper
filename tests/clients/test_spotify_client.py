@@ -7,9 +7,10 @@ from music_scraper.models import Album, Song
 from music_scraper.clients import SpotifyClient, HTTPClient
 from music_scraper.clients.exceptions import (
     SpotifyTemporaryFailure,
-    SpotifyAnalysisNotFound,
     SpotifyUnhandledError,
-    SpotifyRecordNotFound,
+    SpotifyNotFound,
+    SpotifyAlbumUnmatched,
+    SpotifyAuthorisationFailure,
 )
 from tests.helpers import MockResponse, MOCK_ALBUM_ONE
 
@@ -32,6 +33,13 @@ def test_spotify_client_init(spotify_client: SpotifyClient):
     assert spotify_client._headers == expected_headers
 
 
+def test_spotify_client_init_failure():
+    http_client = MagicMock(spec=HTTPClient)
+    http_client.do_post.return_value = MockResponse('{"error": "invalid_client"}', 400)
+    with pytest.raises(SpotifyAuthorisationFailure):
+        SpotifyClient(http_client, "123abc", "789xyz")
+
+
 @pytest.mark.parametrize(
     "status_code, response_data, expected",
     [
@@ -40,7 +48,8 @@ def test_spotify_client_init(spotify_client: SpotifyClient):
         (503, {}, SpotifyTemporaryFailure),
         (504, {}, SpotifyTemporaryFailure),
         (404, {}, SpotifyUnhandledError),
-        (404, {"error": {"message": "analysis not found"}}, SpotifyAnalysisNotFound),
+        (404, {"error": {"message": "analysis not found"}}, SpotifyNotFound),
+        (404, {"error": {"message": "Not found."}}, SpotifyNotFound),
     ],
 )
 def test_spotify_client_get_temporary_failure(
@@ -64,11 +73,11 @@ def test_spotify_client_get_temporary_failure(
 @pytest.mark.parametrize(
     "album, response_data, expected",
     [
-        (MOCK_ALBUM_ONE, {"albums": {"items": []}}, SpotifyRecordNotFound),
+        (MOCK_ALBUM_ONE, {"albums": {"items": []}}, SpotifyAlbumUnmatched),
         (
             MOCK_ALBUM_ONE,
             {"albums": {"items": [{"id": "xyz999", "artists": [{"name": "not the artist"}]}]}},
-            SpotifyRecordNotFound,
+            SpotifyAlbumUnmatched,
         ),
         (
             MOCK_ALBUM_ONE,
