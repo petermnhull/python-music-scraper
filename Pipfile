@@ -8,6 +8,7 @@ bs4 = "*"
 requests = "*"
 structlog = "*"
 pydantic = "*"
+selenium = "*"
 
 [dev-packages]
 black = "==21.11b1"
@@ -15,6 +16,7 @@ pytest = "*"
 flake8 = "*"
 mock = "*"
 freezegun = "*"
+coverage = "*"
 
 [requires]
 python_version = "3.8"
