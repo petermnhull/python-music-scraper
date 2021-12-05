@@ -16,7 +16,8 @@ def _build_selenium_driver(chrome_driver_path: str) -> webdriver.Chrome:
     options = webdriver.ChromeOptions()
     options.add_argument("headless")
     options.add_argument("--no-sandbox")
-    selenium_driver = webdriver.Chrome(executable_path=chrome_driver_path, options=options)
+    chrome_service = webdriver.chrome.service.Service(chrome_driver_path)
+    selenium_driver = webdriver.Chrome(service=chrome_service, options=options)
     return selenium_driver
 
 
